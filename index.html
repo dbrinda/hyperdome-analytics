@@ -165,8 +165,8 @@
 
 <header class="header">
   <div>
-    <div class="header-title">HYPERDOME</div>
-    <div class="header-sub">Match · Arena · Player · Survey Analytics</div>
+    <img src="images/HyperDome_Logo_Image.png" alt="HyperDome" style="height:64px;width:auto;display:block;" />
+    <div class="header-sub" style="margin-top:8px">Match · Arena · Player · Survey Analytics</div>
   </div>
   <div class="header-right">
     <div class="header-top">
@@ -299,7 +299,7 @@ const STATIC_QD = {
 // ─── COLOURS ─────────────────────────────────────────────────────────────────
 const C={gold:'#F5B800',azure:'#2B7FFF',crimson:'#E03535',green:'#22c55e',purple:'#a855f7',teal:'#14b8a6'};
 const BASE_TT={backgroundColor:'#0d0d1c',borderColor:'rgba(245,184,0,0.3)',borderWidth:1,titleColor:C.gold,bodyColor:'#dde0f0',padding:10};
-const DP=[C.gold,C.azure,C.crimson];
+const DP=['#22c55e','#EAB308',C.crimson]; // positive=green, neutral=amber, negative=red
 const CHARTS={};
 
 // ─── LABEL → FILENAME CONVERTERS ─────────────────────────────────────────────
@@ -334,6 +334,7 @@ function positionTooltip(e) {
   ttEl.style.top  = (y + th > window.innerHeight ? y - th : y + 14) + 'px';
 }
 document.addEventListener('mousemove', e => { if (ttEl.style.display==='block') positionTooltip(e); });
+document.addEventListener('scroll', hideTooltip, true); // hide on any scroll
 
 // ─── VKEY HIGHLIGHT ───────────────────────────────────────────────────────────
 function highlightVKey(vkeyId, folder, label) {
@@ -362,13 +363,12 @@ function hbar(id, labels, data, colors, vkeyId, folder, wide) {
     options:{
       indexAxis:'y', responsive:true,
       onHover:(event, elements) => {
-        if (!vkeyId) return;
-        if (elements.length) {
+        if (elements.length && vkeyId) {
           const label = labels[elements[0].index];
           highlightVKey(vkeyId, folder, label);
           showTooltip(event.native, label, data[elements[0].index], folder, wide||false);
         } else {
-          clearVKey(vkeyId);
+          if (vkeyId) clearVKey(vkeyId);
           hideTooltip();
         }
       },
@@ -381,6 +381,11 @@ function hbar(id, labels, data, colors, vkeyId, folder, wide) {
         y:{ticks:{color:'#dde0f0',font:{family:'DM Mono',size:11}},grid:{display:false},afterFit:(s)=>{s.width=140;}},
       },
     },
+  });
+  // Clean up when mouse leaves canvas entirely
+  document.getElementById(id).addEventListener('mouseleave', () => {
+    if (vkeyId) clearVKey(vkeyId);
+    hideTooltip();
   });
 }
 
