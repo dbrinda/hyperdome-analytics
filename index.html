@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>HyperDome Analytics</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:#07070f; --surface:#0d0d1c; --surface2:#131328;
+    --gold:#F5B800; --gold-dim:rgba(245,184,0,0.10); --gold-glow:rgba(245,184,0,0.35);
+    --crimson:#E03535; --azure:#2B7FFF; --green:#22c55e; --purple:#a855f7; --teal:#14b8a6;
+    --text:#dde0f0; --muted:#525270; --border:rgba(245,184,0,0.14); --border2:rgba(255,255,255,0.05);
+  }
+  *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Mono',monospace;font-size:13px;min-height:100vh;
+    background-image:linear-gradient(rgba(245,184,0,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(245,184,0,0.025) 1px,transparent 1px);
+    background-size:44px 44px;}
+
+  /* ── HEADER ── */
+  .header{display:flex;align-items:flex-end;justify-content:space-between;padding:28px 44px 22px;
+    border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(245,184,0,0.055) 0%,transparent 100%);}
+  .header-title{font-family:'Orbitron',sans-serif;font-weight:900;font-size:2rem;letter-spacing:0.1em;
+    color:var(--gold);text-shadow:0 0 48px var(--gold-glow),0 0 12px rgba(245,184,0,0.2);line-height:1;}
+  .header-sub{font-size:0.6rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--muted);margin-top:7px;}
+  .header-right{text-align:right;font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;line-height:1.8;}
+  .header-top{display:flex;align-items:center;gap:10px;justify-content:flex-end;margin-bottom:8px;}
+  .live-pill{display:inline-flex;align-items:center;gap:6px;background:var(--gold-dim);border:1px solid var(--border);
+    border-radius:4px;padding:4px 10px;font-size:0.58rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--gold);}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);animation:blink 2.4s ease-in-out infinite;}
+  .live-dot.static{background:var(--muted);animation:none;}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0.25}}
+  .refresh-btn{
+    display:inline-flex;align-items:center;gap:6px;
+    background:transparent;border:1px solid var(--border);border-radius:4px;
+    padding:4px 12px;font-size:0.58rem;letter-spacing:0.15em;text-transform:uppercase;
+    color:var(--muted);font-family:'DM Mono',monospace;cursor:pointer;transition:all .2s;
+  }
+  .refresh-btn:hover{border-color:var(--gold);color:var(--gold);}
+  .refresh-btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .refresh-icon{font-size:0.75rem;transition:transform .4s;}
+  .refresh-btn.spinning .refresh-icon{animation:spin .6s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ── LAYOUT ── */
+  .wrap{max-width:1360px;margin:0 auto;padding:36px 44px 60px;}
+  .section-row{display:flex;align-items:center;gap:14px;margin:40px 0 18px;}
+  .section-row:first-child{margin-top:0;}
+  .section-label{font-family:'Orbitron',sans-serif;font-size:0.65rem;font-weight:700;
+    letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);white-space:nowrap;}
+  .section-line{flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent);}
+
+  /* ── KPI STRIP ── */
+  .kpi-strip{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;
+    position:relative;overflow:hidden;transition:border-color .2s,transform .15s;}
+  .kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--gold),transparent);opacity:0.55;}
+  .kpi:hover{border-color:rgba(245,184,0,0.38);transform:translateY(-1px);}
+  .kpi-lbl{font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:#9090b8;margin-bottom:10px;}
+  .kpi-val{font-family:'Orbitron',sans-serif;font-size:1.8rem;font-weight:700;color:var(--gold);line-height:1;}
+  .kpi-val.good{color:var(--green);}.kpi-val.warn{color:var(--crimson);}.kpi-val.blue{color:var(--azure);}
+  .kpi-sub{font-size:0.6rem;color:#6a6a90;margin-top:7px;line-height:1.4;}
+
+  /* ── CHART BOXES ── */
+  .chart-box{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px 24px;}
+  .chart-title{font-size:0.72rem;letter-spacing:0.16em;text-transform:uppercase;color:#9090b8;margin-bottom:16px;}
+
+  /* ── GRIDS ── */
+  .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+
+  /* ── VISUAL KEYS ── */
+  .vk-strip{display:grid;gap:10px;margin-top:14px;}
+  .vk-strip-7 {grid-template-columns:repeat(7,1fr);}
+  .vk-strip-10{grid-template-columns:repeat(10,1fr);}
+  .vk-strip-6 {grid-template-columns:repeat(6,1fr);}
+  .vk-strip-9 {grid-template-columns:repeat(9,1fr);}
+  .vk-item{display:flex;flex-direction:column;gap:6px;}
+  .vk-thumb{
+    width:100%;border-radius:6px;
+    background-color:#1a1a30;
+    background-size:cover;background-position:center;
+    border:1px solid rgba(245,184,0,0.3);
+  }
+  .vk-wide{aspect-ratio:16/9;}
+  .vk-sq{aspect-ratio:1/1;}
+  .vk-lbl{font-size:0.55rem;color:#7070a0;text-align:center;letter-spacing:0.06em;line-height:1.3;}
+
+  /* ── DONUTS ── */
+  .donut-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+  .donut-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px;transition:border-color .2s;}
+  .donut-card:hover{border-color:rgba(245,184,0,0.36);}
+  .donut-q{font-size:0.58rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;min-height:2.6em;line-height:1.5;}
+  .donut-wrap{position:relative;height:160px;display:flex;align-items:center;justify-content:center;}
+  .donut-center{position:absolute;text-align:center;pointer-events:none;}
+  .donut-pct{font-family:'Orbitron',sans-serif;font-weight:700;font-size:1.2rem;color:var(--gold);line-height:1;}
+  .donut-psub{font-size:0.5rem;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase;margin-top:3px;}
+  .donut-legend{margin-top:12px;display:flex;flex-direction:column;gap:5px;}
+  .leg-row{display:flex;align-items:flex-start;gap:8px;font-size:0.57rem;color:var(--muted);line-height:1.35;}
+  .leg-dot{width:7px;height:7px;border-radius:50%;margin-top:2px;flex-shrink:0;}
+  .leg-text{flex:1;}.leg-pct{color:var(--text);font-size:0.6rem;white-space:nowrap;margin-left:auto;padding-left:4px;}
+
+  /* ── HEALTH TABLE ── */
+  .health-table{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+  .health-row{display:grid;grid-template-columns:1fr 100px 70px 90px;align-items:center;
+    padding:11px 20px;border-bottom:1px solid var(--border2);transition:background .15s;}
+  .health-row:last-child{border-bottom:none;}
+  .health-row:hover{background:rgba(255,255,255,0.02);}
+  .health-row.head{font-size:0.56rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--muted);background:var(--surface2);padding:9px 20px;}
+  .health-question{font-size:0.65rem;color:var(--text);}
+  .health-total{font-family:'Orbitron',sans-serif;font-size:0.75rem;color:var(--muted);}
+  .health-pos{font-family:'Orbitron',sans-serif;font-size:0.85rem;font-weight:700;text-align:right;}
+  .health-bar-bg{height:4px;border-radius:2px;background:var(--surface2);}
+  .health-bar-fill{height:100%;border-radius:2px;}
+  .c-good{color:var(--green);}.c-ok{color:var(--gold);}.c-warn{color:var(--crimson);}
+  .f-good{background:var(--green);}.f-ok{background:var(--gold);}.f-warn{background:var(--crimson);}
+
+  /* ── INSIGHTS ── */
+  .insight-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .insight{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 18px;}
+  .insight-head{font-size:0.68rem;letter-spacing:0.16em;text-transform:uppercase;color:#9090b8;margin-bottom:8px;}
+  .insight-val{font-size:0.82rem;color:var(--text);line-height:1.5;}
+  .insight-val b{color:var(--gold);}
+
+  /* ── TEAM STAT ── */
+  .team-stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px 24px;
+    display:flex;flex-direction:column;justify-content:center;gap:18px;}
+  .ts-lbl{font-size:0.57rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .ts-val{font-family:'Orbitron',sans-serif;font-size:1.6rem;font-weight:700;line-height:1;}
+  .ts-sub{font-size:0.58rem;color:var(--muted);margin-top:4px;}
+
+  /* ── FOOTER ── */
+  .footer{border-top:1px solid var(--border);padding:18px 44px;font-size:0.57rem;color:var(--muted);
+    letter-spacing:0.08em;display:flex;justify-content:space-between;align-items:center;}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <div class="header-title">HYPERDOME</div>
+    <div class="header-sub">Match · Arena · Player · Survey Analytics</div>
+  </div>
+  <div class="header-right">
+    <div class="header-top">
+      <button class="refresh-btn" id="refresh-btn" onclick="refresh()">
+        <span class="refresh-icon">↻</span> Refresh
+      </button>
+      <div class="live-pill">
+        <span class="live-dot static" id="live-dot"></span>
+        <span id="mode-label">Loading…</span>
+      </div>
+    </div>
+    <div id="header-meta">Joyful Echo Game · Experience 6419311913</div>
+    <div id="header-updated"></div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- KPI STRIP -->
+  <div class="section-row" style="margin-top:0"><span class="section-label">Overview</span><span class="section-line"></span></div>
+  <div class="kpi-strip">
+    <div class="kpi"><div class="kpi-lbl">Matches Played</div><div class="kpi-val" id="kpi-matches">—</div><div class="kpi-sub" id="kpi-matches-sub">Across all maps</div></div>
+    <div class="kpi"><div class="kpi-lbl">Human AirDrops</div><div class="kpi-val blue" id="kpi-drops">—</div><div class="kpi-sub">Sponsor-deployed items</div></div>
+    <div class="kpi"><div class="kpi-lbl">Auto Drops</div><div class="kpi-val" id="kpi-auto">—</div><div class="kpi-sub">The Architect items</div></div>
+    <div class="kpi"><div class="kpi-lbl">Team Balance</div><div class="kpi-val good" id="kpi-balance">—</div><div class="kpi-sub" id="kpi-balance-sub">Azure / Crimson win split</div></div>
+    <div class="kpi"><div class="kpi-lbl">Close Matches</div><div class="kpi-val good" id="kpi-close">—</div><div class="kpi-sub">Decided by 1 goal</div></div>
+    <div class="kpi"><div class="kpi-lbl">VIP Conversion</div><div class="kpi-val" id="kpi-vip">—</div><div class="kpi-sub" id="kpi-vip-sub">Day Pass / gate touches</div></div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="section-row"><span class="section-label">Signal Highlights</span><span class="section-line"></span></div>
+  <div class="insight-strip">
+    <div class="insight"><div class="insight-head">🗺 Map Preference</div><div class="insight-val" id="ins-map">—</div></div>
+    <div class="insight"><div class="insight-head">💧 Drop Behaviour</div><div class="insight-val" id="ins-drop">—</div></div>
+    <div class="insight"><div class="insight-head">🎮 Player Profile</div><div class="insight-val" id="ins-player">—</div></div>
+  </div>
+
+  <!-- MATCH ANALYTICS -->
+  <div class="section-row"><span class="section-label">Match Analytics</span><span class="section-line"></span></div>
+  <div class="grid-2">
+    <div class="chart-box"><div class="chart-title">Map Votes — Player Preference</div><canvas id="chart-mapvotes" height="170"></canvas></div>
+    <div class="chart-box"><div class="chart-title">Maps Played — Match Count</div><canvas id="chart-mapsplayed" height="170"></canvas></div>
+  </div>
+  <div id="vkey-maps" class="vk-strip vk-strip-7"></div>
+  <div class="grid-3" style="margin-top:14px">
+    <div class="chart-box"><div class="chart-title">Match Duration</div><canvas id="chart-duration" height="120"></canvas></div>
+    <div class="chart-box"><div class="chart-title">Score Differentials</div><canvas id="chart-scorediff" height="120"></canvas></div>
+    <div class="chart-box"><div class="chart-title">Goals Per Match</div><canvas id="chart-goals" height="120"></canvas></div>
+  </div>
+  <div class="grid-2-1" style="margin-top:14px">
+    <div class="chart-box"><div class="chart-title">Team Win Rates — All Maps</div><canvas id="chart-teamwins" height="110"></canvas></div>
+    <div class="team-stat">
+      <div><div class="ts-lbl">Azure Strike</div><div class="ts-val" style="color:var(--azure)" id="ts-azure">—</div><div class="ts-sub" id="ts-azure-sub"></div></div>
+      <div><div class="ts-lbl">Crimson Surge</div><div class="ts-val" style="color:var(--crimson)" id="ts-crimson">—</div><div class="ts-sub" id="ts-crimson-sub"></div></div>
+    </div>
+  </div>
+
+  <!-- AIRDROP ANALYTICS -->
+  <div class="section-row"><span class="section-label">AirDrop Analytics</span><span class="section-line"></span></div>
+  <div class="grid-2">
+    <div class="chart-box"><div class="chart-title">Human Sponsor Drops — Item Choices</div><canvas id="chart-humandrop" height="230"></canvas></div>
+    <div class="chart-box"><div class="chart-title">AutoDrop — The Architect's Distribution</div><canvas id="chart-autodrop" height="230"></canvas></div>
+  </div>
+  <div id="vkey-drops" class="vk-strip vk-strip-10"></div>
+
+  <!-- PLAYERS & CUSTOMISATION -->
+  <div class="section-row"><span class="section-label">Players &amp; Customisation</span><span class="section-line"></span></div>
+  <div class="grid-3">
+    <div class="chart-box"><div class="chart-title">Avatar Selections</div><canvas id="chart-avatars" height="170"></canvas></div>
+    <div class="chart-box"><div class="chart-title">Skybox Previewed (VIP Auditions)</div><canvas id="chart-skypreview" height="170"></canvas></div>
+    <div class="chart-box"><div class="chart-title">Skybox Kept — Final Pick</div><canvas id="chart-skykeep" height="170"></canvas></div>
+  </div>
+  <div class="grid-2" style="margin-top:14px">
+    <div id="vkey-avatars"  class="vk-strip vk-strip-6"></div>
+    <div id="vkey-skyboxes" class="vk-strip vk-strip-9"></div>
+  </div>
+
+  <!-- SURVEY VOLUME -->
+  <div class="section-row"><span class="section-label">Survey — Response Volume Over Time</span><span class="section-line"></span></div>
+  <div class="chart-box"><canvas id="line-chart" height="100"></canvas></div>
+
+  <!-- SURVEY DONUTS -->
+  <div class="section-row"><span class="section-label">Survey — Player Sentiment (8 Questions)</span><span class="section-line"></span></div>
+  <div class="donut-grid" id="donut-grid"></div>
+
+  <!-- HEALTH SCORECARD -->
+  <div class="section-row"><span class="section-label">Survey Health Scorecard</span><span class="section-line"></span></div>
+  <div class="health-table">
+    <div class="health-row head"><div>Question</div><div>Responses</div><div style="text-align:right">Positive</div><div></div></div>
+    <div id="health-body"></div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  <div>HyperDome Analytics · Joyful Echo Game · <span id="footer-updated"></span></div>
+  <div>Chart.js 4.4 · dbrinda.github.io/hyperdome-analytics</div>
+</footer>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// Paste your Apps Script /exec URL here after deploying the Web App.
+// Deploy → New deployment → Web App → Execute as Me → Anyone can access.
+const LIVE_URL = 'https://script.google.com/macros/s/AKfycbwO-JOZqUPYITAl29EYFkEdoBwtmuatYYYvLWIo2om5wjQfH9wF51-x08UuEjHK1Ru6/exec';
+
+// ─── STATIC FALLBACK DATA ────────────────────────────────────────────────────
+const STATIC_G = {
+  mapVotes:   {l:['Map-5','Map-6','Map-7','Map-2','Map-1','Map-3','Map-4'],    d:[20,17,16,6,4,4,2]},
+  mapsPlayed: {l:['Map-7','Map-6','Map-5','Map-3','Map-2','Map-1','Map-4'],    d:[24,24,24,14,12,8,7]},
+  duration:   {l:['0-2 min','4-6 min','2-4 min'],                              d:[96,13,1]},
+  scoreDiff:  {l:['1 goal','2 goals','3+ goals'],                              d:[83,19,8]},
+  teamWins:   {l:['Azure Strike','Crimson Surge'],                             d:[60,50]},
+  goals:      {l:['1-2 goals','3-5 goals','6+ goals'],                        d:[99,5,6]},
+  humanDrop:  {l:['Wildfire Wall','Gravity Well','Smoke Screen','Speed Boost','Ice Sheet','Shield','Health Pack','Zero Gravity','Bounce Pad','Cancel'],d:[14,12,11,8,8,7,7,6,6,3]},
+  autoDrop:   {l:['Zero Gravity','Wildfire Wall','Health Pack','Ice Sheet','Speed Boost','Shield','Bounce Pad','Smoke Screen','Gravity Well'],         d:[43,36,35,33,30,29,29,29,25]},
+  avatars:    {l:['Avatar-m-2','Avatar-m-3','Avatar-m-1','Avatar-f-3','Avatar-f-2','Avatar-f-1'],d:[39,30,28,24,21,14]},
+  skyPrev:    {l:['Sky-02','Sky-01','Sky-08','Sky-06','Sky-03'],               d:[4,3,2,2,1]},
+  skyKeep:    {l:['Sky-02','Sky-03'],                                          d:[3,1]},
+  gateTouch:  7, dayPass: 1,
+};
+
+const STATIC_DAILY = {'2026-04-20':1904,'2026-04-21':6594,'2026-04-22':181,'2026-04-30':10,'2026-05-06':43};
+
+const QORDER = ['overall_vibe','binary_mechanic','match_balance','airdrops','map_feel','hazards','team_experience','technical'];
+const STATIC_QD = {
+  overall_vibe:    {q:'How was that match?',                    n:4, a:[{l:'🔥 Loved it',c:2,p:50.0},{l:'😐 It was okay',c:1,p:25.0},{l:'😤 Felt off',c:1,p:25.0}]},
+  binary_mechanic: {q:'How did the ball/weapon rule feel?',     n:6, a:[{l:'⚖️ Just right',c:4,p:66.7},{l:'🤔 Still figuring it out',c:1,p:16.7},{l:'😅 Kind of frustrating',c:1,p:16.7}]},
+  match_balance:   {q:'How did the match feel competitively?',  n:4, a:[{l:'⚡ Close and intense',c:2,p:50.0},{l:'😬 One team dominated',c:1,p:25.0},{l:'🤷 Hard to tell',c:1,p:25.0}]},
+  airdrops:        {q:'Did airdrops affect the match?',         n:5, a:[{l:'💥 Yeah, in a fun way',c:3,p:60.0},{l:'😑 Barely noticed them',c:1,p:20.0},{l:'😠 Felt unfair',c:1,p:20.0}]},
+  map_feel:        {q:'How did you feel about this map?',       n:4, a:[{l:'🏟️ Love it',c:2,p:50.0},{l:"👍 It's fine",c:1,p:25.0},{l:'👎 Not for me',c:1,p:25.0}]},
+  hazards:         {q:'How were the arena hazards?',            n:4, a:[{l:'😈 Love the chaos',c:2,p:50.0},{l:'⚠️ A bit much',c:1,p:25.0},{l:'👻 Barely noticed them',c:1,p:25.0}]},
+  team_experience: {q:'How was playing with your team?',        n:4, a:[{l:'🤝 Felt like a real team',c:2,p:50.0},{l:'🤷 Kind of everyone for themselves',c:1,p:25.0},{l:'🎮 I was mostly solo',c:1,p:25.0}]},
+  technical:       {q:'Did anything feel broken or off?',       n:4, a:[{l:'✅ Nope, ran smooth',c:2,p:50.0},{l:'⚠️ A couple hiccups',c:1,p:25.0},{l:'🐛 Yeah, something was wrong',c:1,p:25.0}]},
+};
+
+// ─── COLOURS ─────────────────────────────────────────────────────────────────
+const C={gold:'#F5B800',azure:'#2B7FFF',crimson:'#E03535',green:'#22c55e',purple:'#a855f7',teal:'#14b8a6'};
+const TT={backgroundColor:'#0d0d1c',borderColor:'rgba(245,184,0,0.3)',borderWidth:1,titleColor:C.gold,bodyColor:'#dde0f0',padding:10};
+const DONUT_PALETTE=[C.gold,C.azure,C.crimson];
+
+// ─── CHART INSTANCES (for destroy on refresh) ─────────────────────────────────
+const CHARTS = {};
+function mkChart(id, config) {
+  if (CHARTS[id]) { CHARTS[id].destroy(); }
+  CHARTS[id] = new Chart(document.getElementById(id).getContext('2d'), config);
+  return CHARTS[id];
+}
+
+// ─── LIVE DATA PROCESSING ────────────────────────────────────────────────────
+function processLiveData(json) {
+  const rawMetrics = json.gameMetrics || [];
+
+  function metricFor(cat, evt) {
+    const rows = rawMetrics
+      .filter(r => String(r.Category)===cat && String(r.Event)===evt)
+      .sort((a,b) => Number(b.Count)-Number(a.Count));
+    return rows.length ? {l:rows.map(r=>String(r.Key)), d:rows.map(r=>Number(r.Count))} : null;
+  }
+
+  function orStatic(live, key) { return (live && live.l.length) ? live : STATIC_G[key]; }
+
+  const g = {
+    mapVotes:  orStatic(metricFor('Maps','Vote'),          'mapVotes'),
+    mapsPlayed:orStatic(metricFor('Maps','Played'),        'mapsPlayed'),
+    duration:  orStatic(metricFor('Match','Duration'),     'duration'),
+    scoreDiff: orStatic(metricFor('Match','ScoreDiff'),    'scoreDiff'),
+    teamWins:  orStatic(metricFor('Match','TeamWin'),      'teamWins'),
+    goals:     orStatic(metricFor('Match','GoalsTotal'),   'goals'),
+    humanDrop: orStatic(metricFor('AirDrop','Deploy'),     'humanDrop'),
+    autoDrop:  orStatic(metricFor('AirDrop','AutoDrop'),   'autoDrop'),
+    avatars:   orStatic(metricFor('Avatar','Selected'),    'avatars'),
+    skyPrev:   orStatic(metricFor('Skybox','Auditioned'),  'skyPrev'),
+    skyKeep:   orStatic(metricFor('Skybox','Kept'),        'skyKeep'),
+    gateTouch: (metricFor('VIP','GateTouch')||{d:[STATIC_G.gateTouch]}).d[0] || STATIC_G.gateTouch,
+    dayPass:   (metricFor('VIP','Conversion')||{d:[STATIC_G.dayPass]}).d[0]  || STATIC_G.dayPass,
+  };
+
+  // Survey donuts from Analytics Totals
+  const rawTotals = json.analyticsTotals || [];
+  const qd = JSON.parse(JSON.stringify(STATIC_QD));
+  QORDER.forEach(qid => {
+    const rows = rawTotals.filter(r => String(r.Category)==='Survey' && String(r.QuestionId)===qid);
+    if (!rows.length) return;
+    qd[qid].n = rows.reduce((s,r)=>s+Number(r.Count),0);
+    qd[qid].a.forEach(ans => {
+      const m = rows.find(r => String(r.AnswerSlot)===ans.l);
+      ans.c = m ? Number(m.Count) : 0;
+      ans.p = qd[qid].n>0 ? Math.round(ans.c/qd[qid].n*1000)/10 : 0;
+    });
+  });
+
+  // Daily volume — deduplicated survey rows grouped by date
+  const daily = {};
+  (json.surveyRows || []).forEach(r => {
+    const day = String(r.Timestamp||'').substring(0,10);
+    if (day.match(/^\d{4}-\d{2}-\d{2}$/)) daily[day]=(daily[day]||0)+1;
+  });
+
+  return { g, qd, daily: Object.keys(daily).length ? daily : STATIC_DAILY };
+}
+
+// ─── HBAR FACTORY ─────────────────────────────────────────────────────────────
+function hbar(id, labels, data, colors) {
+  mkChart(id, {
+    type:'bar',
+    data:{labels, datasets:[{data, backgroundColor:colors, borderRadius:3, borderSkipped:false}]},
+    options:{
+      indexAxis:'y', responsive:true,
+      plugins:{legend:{display:false}, tooltip:TT},
+      scales:{
+        x:{ticks:{color:'#525270',font:{family:'DM Mono',size:10}}, grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#dde0f0',font:{family:'DM Mono',size:11}}, grid:{display:false}, afterFit:(s)=>{s.width=140;}},
+      },
+    },
+  });
+}
+
+// ─── VISUAL KEYS ─────────────────────────────────────────────────────────────
+function vkey(id, items, folder, wide) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = items.map(item => {
+    const fname = item.replace(/\s+/g,'-');
+    return `<div class="vk-item">
+      <div class="vk-thumb ${wide?'vk-wide':'vk-sq'}"
+           style="background-image:url('images/${folder}/${fname}.png')"
+           title="${item}"></div>
+      <div class="vk-lbl">${item}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER ──────────────────────────────────────────────────────────────────
+function render(g, qd, daily) {
+
+  // ── KPIs ──
+  const totalMatches = g.mapsPlayed.d.reduce((s,v)=>s+v,0);
+  const totalHuman   = g.humanDrop.d.reduce((s,v)=>s+v,0);
+  const totalAuto    = g.autoDrop.d.reduce((s,v)=>s+v,0);
+  const totalWins    = g.teamWins.d.reduce((s,v)=>s+v,0);
+  const azureWins    = g.teamWins.d[0]||0;
+  const crimsonWins  = g.teamWins.d[1]||0;
+  const closePct     = g.scoreDiff.d[0]&&totalMatches>0 ? Math.round(g.scoreDiff.d[0]/g.scoreDiff.d.reduce((s,v)=>s+v,0)*100) : 0;
+  const vipPct       = g.gateTouch>0 ? Math.round(g.dayPass/g.gateTouch*100) : 0;
+
+  document.getElementById('kpi-matches').textContent = totalMatches;
+  document.getElementById('kpi-matches-sub').textContent = `Across ${g.mapsPlayed.l.length} maps`;
+  document.getElementById('kpi-drops').textContent   = totalHuman;
+  document.getElementById('kpi-auto').textContent    = totalAuto;
+  document.getElementById('kpi-balance').textContent = `${Math.round(azureWins/totalWins*100)}/${Math.round(crimsonWins/totalWins*100)}`;
+  document.getElementById('kpi-close').textContent   = closePct+'%';
+  document.getElementById('kpi-vip').textContent     = vipPct+'%';
+  document.getElementById('kpi-vip-sub').textContent = `${g.dayPass} Day Pass / ${g.gateTouch} gate touches`;
+
+  // ── Team stat cards ──
+  document.getElementById('ts-azure').textContent      = azureWins+' wins';
+  document.getElementById('ts-azure-sub').textContent  = `${Math.round(azureWins/totalWins*100)}% of all matches`;
+  document.getElementById('ts-crimson').textContent    = crimsonWins+' wins';
+  document.getElementById('ts-crimson-sub').textContent= `${Math.round(crimsonWins/totalWins*100)}% of all matches`;
+
+  // ── Insights ──
+  const topMaps = g.mapVotes.l.slice(0,3).join(', ');
+  const bottomMap = g.mapVotes.l[g.mapVotes.l.length-1];
+  document.getElementById('ins-map').innerHTML =
+    `<b>${topMaps}</b> dominate votes and plays. <b>${bottomMap}</b> is underperforming with just ${g.mapVotes.d[g.mapVotes.d.length-1]} votes.`;
+  document.getElementById('ins-drop').innerHTML =
+    `<b>${g.humanDrop.l[0]} &amp; ${g.humanDrop.l[1]}</b> are top Sponsor picks. The Architect leads with <b>${g.autoDrop.l[0]}</b> — distributed broadly.`;
+  const topAvatar = g.avatars.l[0];
+  const topSky = g.skyKeep.l[0]||g.skyPrev.l[0]||'—';
+  document.getElementById('ins-player').innerHTML =
+    `<b>${topAvatar}</b> is the most-picked character. <b>${topSky}</b> is the top-kept skybox.`;
+
+  // ── Maps ──
+  hbar('chart-mapvotes',   g.mapVotes.l,   g.mapVotes.d,   g.mapVotes.d.map((_,i)=>i<3?C.gold:'rgba(245,184,0,0.35)'));
+  hbar('chart-mapsplayed', g.mapsPlayed.l, g.mapsPlayed.d, g.mapsPlayed.d.map((_,i)=>i<3?C.azure:'rgba(43,127,255,0.4)'));
+
+  // ── Match stats ──
+  hbar('chart-duration',  g.duration.l,  g.duration.d,  [C.gold,'rgba(245,184,0,0.5)','rgba(245,184,0,0.25)']);
+  hbar('chart-scorediff', g.scoreDiff.l, g.scoreDiff.d, [C.azure,'rgba(43,127,255,0.55)','rgba(43,127,255,0.3)']);
+  hbar('chart-goals',     g.goals.l,     g.goals.d,     [C.gold,'rgba(245,184,0,0.5)','rgba(245,184,0,0.3)']);
+
+  mkChart('chart-teamwins', {
+    type:'doughnut',
+    data:{labels:g.teamWins.l,datasets:[{data:g.teamWins.d,backgroundColor:[C.azure,C.crimson],borderColor:'#0d0d1c',borderWidth:3}]},
+    options:{cutout:'65%',responsive:true,
+      plugins:{legend:{display:true,position:'right',labels:{color:'#dde0f0',font:{family:'DM Mono',size:11},padding:16}},
+               tooltip:{...TT,callbacks:{label:ctx=>`  ${ctx.parsed} wins (${Math.round(ctx.parsed/totalWins*100)}%)`}}},
+    },
+  });
+
+  // ── AirDrops ──
+  hbar('chart-humandrop', g.humanDrop.l, g.humanDrop.d, g.humanDrop.d.map((_,i)=>`rgba(245,184,0,${0.95-i*0.07})`));
+  hbar('chart-autodrop',  g.autoDrop.l,  g.autoDrop.d,  g.autoDrop.d.map((_,i) =>`rgba(168,85,247,${0.95-i*0.07})`));
+
+  // ── Players ──
+  hbar('chart-avatars',    g.avatars.l, g.avatars.d, g.avatars.l.map(l=>l.includes('-m-')?C.azure:C.crimson));
+  hbar('chart-skypreview', g.skyPrev.l, g.skyPrev.d, C.teal);
+  hbar('chart-skykeep',    g.skyKeep.l, g.skyKeep.d, C.gold);
+
+  // ── Visual keys ──
+  vkey('vkey-maps',     ['Map-1','Map-2','Map-3','Map-4','Map-5','Map-6','Map-7'], 'maps', true);
+  vkey('vkey-drops',    ['Wildfire Wall','Ice Sheet','Gravity Well','Speed Boost','Health Pack','Smoke Screen','Bounce Pad','Zero Gravity','Shield','Cancel'], 'airdrops', false);
+  vkey('vkey-avatars',  ['Avatar-m-1','Avatar-m-2','Avatar-m-3','Avatar-f-1','Avatar-f-2','Avatar-f-3'], 'avatars', false);
+  vkey('vkey-skyboxes', ['Default','Skybox-1','Skybox-2','Skybox-3','Skybox-4','Skybox-5','Skybox-6','Skybox-7','Skybox-8'], 'skyboxes', false);
+
+  // ── Survey line ──
+  const days = Object.keys(daily).sort();
+  mkChart('line-chart', {
+    type:'line',
+    data:{
+      labels:days.map(d=>{const dt=new Date(d+'T12:00:00');return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});}),
+      datasets:[{label:'Responses',data:days.map(d=>daily[d]),
+        borderColor:C.gold,backgroundColor:'rgba(245,184,0,0.08)',
+        borderWidth:2,pointBackgroundColor:C.gold,pointBorderColor:'#07070f',
+        pointBorderWidth:2,pointRadius:5,tension:0.35,fill:true}],
+    },
+    options:{responsive:true,
+      plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.parsed.y.toLocaleString()} responses`}}},
+      scales:{
+        x:{ticks:{color:'#525270',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{beginAtZero:true,ticks:{color:'#525270',font:{family:'DM Mono',size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+      },
+    },
+  });
+
+  // ── Survey donuts ──
+  const grid = document.getElementById('donut-grid');
+  grid.innerHTML = '';
+  for (const qid of QORDER) {
+    const q = qd[qid];
+    const card = document.createElement('div');
+    card.className = 'donut-card';
+    card.innerHTML = `
+      <div class="donut-q">${q.q}</div>
+      <div class="donut-wrap"><canvas id="dn-${qid}"></canvas>
+        <div class="donut-center"><div class="donut-pct">${q.a[0].p}%</div><div class="donut-psub">positive</div></div>
+      </div>
+      <div class="donut-legend">${q.a.map((a,i)=>`
+        <div class="leg-row"><span class="leg-dot" style="background:${DONUT_PALETTE[i]}"></span>
+        <span class="leg-text">${a.l}</span><span class="leg-pct">${a.p}%</span></div>`).join('')}
+      </div>`;
+    grid.appendChild(card);
+    mkChart(`dn-${qid}`, {
+      type:'doughnut',
+      data:{labels:q.a.map(a=>a.l),datasets:[{data:q.a.map(a=>a.c),backgroundColor:DONUT_PALETTE,borderColor:'#0d0d1c',borderWidth:3}]},
+      options:{cutout:'68%',responsive:true,
+        plugins:{legend:{display:false},tooltip:{...TT,callbacks:{label:ctx=>` ${ctx.parsed} · ${q.a[ctx.dataIndex].p}%`}}}},
+    });
+  }
+
+  // ── Health scorecard ──
+  const body = document.getElementById('health-body');
+  body.innerHTML = '';
+  [...QORDER].sort((a,b)=>qd[b].a[0].p-qd[a].a[0].p).forEach(qid=>{
+    const q=qd[qid]; const pct=q.a[0].p;
+    const cls=pct>=65?'good':pct>=45?'ok':'warn';
+    const row=document.createElement('div'); row.className='health-row';
+    row.innerHTML=`<div class="health-question">${q.q}</div><div class="health-total">${q.n}</div>
+      <div class="health-pos c-${cls}">${pct}%</div>
+      <div><div class="health-bar-bg"><div class="health-bar-fill f-${cls}" style="width:${Math.min(pct,100)}%"></div></div></div>`;
+    body.appendChild(row);
+  });
+}
+
+// ─── LOAD + REFRESH ──────────────────────────────────────────────────────────
+async function loadData() {
+  const btn  = document.getElementById('refresh-btn');
+  const dot  = document.getElementById('live-dot');
+  const lbl  = document.getElementById('mode-label');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+
+  if (LIVE_URL) {
+    try {
+      lbl.textContent = 'Fetching…';
+      const json = await (await fetch(LIVE_URL + '?t=' + Date.now())).json();
+      const {g, qd, daily} = processLiveData(json);
+      render(g, qd, daily);
+      dot.classList.remove('static');
+      lbl.textContent = 'Live';
+      const ts = json.generated ? new Date(json.generated).toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) : '—';
+      document.getElementById('header-updated').textContent = 'Last synced ' + ts;
+      document.getElementById('footer-updated').textContent = 'Live · refreshed ' + new Date().toLocaleTimeString();
+    } catch(e) {
+      console.error('Live fetch failed, using static data:', e);
+      render(STATIC_G, STATIC_QD, STATIC_DAILY);
+      dot.classList.add('static');
+      lbl.textContent = 'Offline (static)';
+      document.getElementById('footer-updated').textContent = 'Static fallback · ' + new Date().toLocaleDateString();
+    }
+  } else {
+    render(STATIC_G, STATIC_QD, STATIC_DAILY);
+    dot.classList.add('static');
+    lbl.textContent = 'Static snapshot · May 2026';
+    document.getElementById('header-updated').textContent = 'Set LIVE_URL to connect live data';
+    document.getElementById('footer-updated').textContent = 'Static snapshot · May 2026';
+  }
+
+  btn.disabled = false;
+  btn.classList.remove('spinning');
+}
+
+function refresh() { loadData(); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadData();
+</script>
+</body>
+</html>
