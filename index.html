@@ -178,7 +178,7 @@
         <span id="mode-label">Loading…</span>
       </div>
     </div>
-    <div>Joyful Echo Game · Experience 6419311913</div>
+    <div><a href="https://www.roblox.com/games/102158069745517/HyperDome" target="_blank" style="color:var(--muted);text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#F5B800'" onmouseout="this.style.color=''">Joyful Echo Games · Experience 6419311913 ↗</a></div>
     <div id="header-updated"></div>
   </div>
 </header>
@@ -254,7 +254,7 @@
 </main>
 
 <footer class="footer">
-  <div>HyperDome Analytics · Joyful Echo Game · <span id="footer-updated"></span></div>
+  <div>HyperDome Analytics · <a href="https://www.roblox.com/games/102158069745517/HyperDome" target="_blank" style="color:var(--muted);text-decoration:none;" onmouseover="this.style.color='#F5B800'" onmouseout="this.style.color=''">Joyful Echo Games ↗</a> · <span id="footer-updated"></span></div>
   <div>Chart.js 4.4 · dbrinda.github.io/hyperdome-analytics</div>
 </footer>
 
@@ -551,7 +551,7 @@ function render(g, qd, daily) {
       type:'doughnut',
       data:{labels:q.a.map(a=>a.l),datasets:[{data:q.a.map(a=>a.c),backgroundColor:DP,borderColor:'#0d0d1c',borderWidth:3}]},
       options:{cutout:'68%',responsive:true,
-        plugins:{legend:{display:false},tooltip:{...BASE_TT,callbacks:{label:ctx=>` ${ctx.parsed} · ${q.a[ctx.dataIndex].p}%`}}}},
+        plugins:{legend:{display:false},tooltip:{...BASE_TT,yAlign:'bottom',callbacks:{label:ctx=>` ${ctx.parsed} · ${q.a[ctx.dataIndex].p}%`}}}},
     });
   }
 
